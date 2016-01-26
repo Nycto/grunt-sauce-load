@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+tmp
+.tscache
+.baseDir.ts
+*.js
+tscommand-*.tmp.txt
+build
