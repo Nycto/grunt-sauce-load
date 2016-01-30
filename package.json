@@ -31,7 +31,9 @@
     "typescript": "next"
   },
   "dependencies": {
-    "q": "^1.4.1"
+    "cleankill": "^1.0.2",
+    "q": "^1.4.1",
+    "sauce-tunnel": "^2.3.0"
   },
   "peerDependencies": {
     "grunt": "~0.4.5"

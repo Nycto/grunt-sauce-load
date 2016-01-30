@@ -5,7 +5,7 @@ module.exports = function(grunt) {
     var tsOptions = {
         sourceMap: false,
         module: 'amd',
-        target: 'es5',
+        target: 'es6',
         basePath: 'src'
     };
 
@@ -71,8 +71,8 @@ module.exports = function(grunt) {
             task: {
                 expand: true,
                 cwd: 'build/',
-                src: [ 'tasks/**/*.js' ],
-                dest: '.'
+                src: [ 'grunt-sauce-load.js' ],
+                dest: 'tasks/'
             }
         },
 
