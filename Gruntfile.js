@@ -2,13 +2,6 @@
 module.exports = function(grunt) {
     "use strict";
 
-    var tsOptions = {
-        sourceMap: false,
-        module: 'amd',
-        target: 'es6',
-        basePath: 'src'
-    };
-
     // Project configuration.
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
@@ -26,7 +19,12 @@ module.exports = function(grunt) {
             tasks: {
                 src: 'src/task.ts',
                 out: 'build/task.js',
-                options: tsOptions
+                options:{
+                    sourceMap: false,
+                    module: 'amd',
+                    target: 'es5',
+                    basePath: 'src'
+                }
             }
         },
 
@@ -106,4 +104,5 @@ module.exports = function(grunt) {
     // By default, lint and run all tests.
     grunt.registerTask('default', ['tslint', 'ts', 'js', 'copy']);
     grunt.registerTask('js', ['jshint', 'concat']);
+    grunt.registerTask('dev', ['watch']);
 };

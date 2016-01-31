@@ -1,4 +1,3 @@
-/// <reference path="../typings/gruntjs/gruntjs.d.ts" />
 /// <reference path="../typings/q/Q.d.ts" />
 /// <reference path="./SauceLabs.d.ts" />
 /// <reference path="./Cleankill.d.ts" />
@@ -6,14 +5,14 @@
 var SauceTunnel: SauceLabs.TunnelCtor = require("sauce-tunnel");
 import Q = require("q");
 import cleankill = require("cleankill");
-import conf = require("config");
+import {Options, Credentials, Logger} from "./config";
 
 /** Configures a tunnel, and calls a function with that tunnel */
 export default class TunnelConf {
     constructor(
-        private options: conf.Options,
-        private credentials: conf.Credentials,
-        private log: grunt.log.LogModule
+        private options: Options,
+        private credentials: Credentials,
+        private log: Logger
     ) {}
 
     /**
@@ -24,13 +23,13 @@ export default class TunnelConf {
         fn: (tunnel: SauceLabs.Tunnel) => Q.Promise<T>
     ): Q.Promise<T> {
 
-        this.log.writeln("=> Starting Tunnel to Sauce Labs".inverse.bold());
+        this.log.writeln("=> Starting Tunnel to Sauce Labs".inverse);
 
         var tunnel = new SauceTunnel(
             this.credentials.user,
             this.credentials.key,
             Math.floor((new Date()).getTime() / 1000 - 1230768000).toString(),
-            true,
+            !this.options.mockTunnel,
             ["-P", "0"]
         );
 
@@ -50,19 +49,24 @@ export default class TunnelConf {
         var stopped: Q.Promise<void>;
 
         /** Stops the tunnel */
-        function stopTunnel(): Q.Promise<void> {
+        var stopTunnel = () => {
             if ( !stopped ) {
                 var stopping = Q.defer<void>();
 
-                this.log.writeln("=> Closing Tunnel".inverse.bold());
-                tunnel.stop(function () {
-                    this.log.ok("Tunnel Closed");
-                    stopping.resolve();
-                });
+                this.log.writeln("=> Closing Tunnel".inverse);
 
-                stopped = stopping.promise.timeout(
+                if ( !this.options.mockTunnel ) {
+                    tunnel.stop(() => stopping.resolve());
+                }
+                else {
+                    stopping.resolve();
+                }
+
+                stopped = stopping.promise.then(() => {
+                    this.log.ok("Tunnel Closed");
+                }).timeout(
                     this.options.setupTimeout,
-                    "Timed out trying to close tunnel"
+                    `Timed out closing tunnel: ${this.options.setupTimeout}ms`
                 );
             }
 
@@ -77,11 +81,9 @@ export default class TunnelConf {
         return defer.promise
             .timeout(
                 this.options.setupTimeout,
-                "Timed out trying to create tunnel"
+                `Timed out creating tunnel: ${this.options.setupTimeout}ms`
             )
-            .then(function () {
-                return fn(tunnel).finally(stopTunnel);
-            });
+            .then(() => fn(tunnel).finally(stopTunnel));
     }
 }
 

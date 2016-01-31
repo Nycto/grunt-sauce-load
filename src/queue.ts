@@ -18,6 +18,27 @@ export interface Result<V, R> {
     result: R;
 }
 
+/** A set of objects */
+class Set<V> {
+
+    /** The actual set */
+    private data: { [key: string]: V } = {};
+
+    constructor( initial: V[] = [] ) {
+        initial.forEach(value => this.add(value));
+    }
+
+    /** Whether a value exists */
+    has( value: V ): void {
+        this.data[ JSON.stringify(value) ] = value;
+    }
+
+    /** Adds a value */
+    add( value: V ): boolean {
+        return this.data.hasOwnProperty(JSON.stringify(value));
+    }
+}
+
 /**
  * Creates a queue that processes values. Each function execution has a chance
  * to add more values to process. The queue is processed sequentially.
@@ -86,6 +107,8 @@ export function execute<V, R>(
                 .then(next);
         });
     }
+
+    next();
 
     return out.promise;
 }

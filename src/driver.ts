@@ -1,30 +1,30 @@
-/// <reference path="../typings/gruntjs/gruntjs.d.ts" />
 /// <reference path="../typings/q/Q.d.ts" />
 /// <reference path="./SauceLabs.d.ts" />
 /// <reference path="./wd.d.ts" />
 
-import conf = require("./config");
+import {Options, Credentials, BrowserData, Browser, Logger} from "./config";
 import wd = require("wd");
+import Q = require("q");
 
 /** A function for building a web driver setup object */
 export type WebDriverBuilder = (
     tunnel: SauceLabs.Tunnel,
-    browser: conf.BrowserDescription
+    browser: BrowserData
 ) => WebDriverSetup;
 
 /** Helper for creating a web driver setup object */
 export function build(
-    options: conf.Options,
-    credentials: conf.Credentials,
-    log: grunt.log.LogModule
+    options: Options,
+    credentials: Credentials,
+    log: Logger
 ): WebDriverBuilder {
     return function (
         tunnel: SauceLabs.Tunnel,
-        browser: conf.BrowserDescription
+        browser: BrowserData
     ) {
         return new WebDriverSetup(
             options, tunnel,
-            new conf.Browser(browser),
+            new Browser(browser),
             credentials, log
         );
     };
@@ -33,11 +33,11 @@ export function build(
 /** Executes a callback with a browser */
 export class WebDriverSetup {
     constructor (
-        private options: conf.Options,
+        private options: Options,
         private tunnel: SauceLabs.Tunnel,
-        private browser: conf.Browser,
-        private credentials: conf.Credentials,
-        private log: grunt.log.LogModule
+        private browser: Browser,
+        private credentials: Credentials,
+        private log: Logger
     ) {}
 
     /** Initializes the browser and returns a session */
@@ -63,7 +63,7 @@ export class WebDriverSetup {
         this.log.writeln("* Starting: " + this.browser.readable());
 
         var driver = wd.promiseChainRemote(
-            "ondemand.saucelabs.com", 80,
+            this.options.seleniumHost, this.options.seleniumPort,
             this.credentials.user, this.credentials.key
         );
 
@@ -77,14 +77,16 @@ export class WebDriverSetup {
         return this.init(conf, driver)
             .timeout(
                 this.options.setupTimeout,
-                "Timed out initializing browser"
+                `Timed out initializing browser: ${this.options.setupTimeout}ms`
             )
             .then((session: string): Q.Promise<T> => {
                 this.log.writeln("* https://saucelabs.com/tests/" + session[0]);
 
+                driver.setAsyncScriptTimeout(this.options.testTimeout);
+
                 return fn(driver).timeout(
                     this.options.testTimeout,
-                    "Timed out running tests"
+                    `Timed out running test: ${this.options.testTimeout}ms`
                 );
             })
             .finally(() => {

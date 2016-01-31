@@ -1,5 +1,7 @@
 /// <reference path="../typings/q/Q.d.ts" />
 
+import Q = require("q");
+
 /** Keeps a throttled list of factories humming */
 export function callbacks<R>(
     concurrent: number,
@@ -88,7 +90,7 @@ export function list<T, R>(
     var index = 0;
     return callbacks(concurrent, () => {
         if ( index < list.length ) {
-            return fn( list[index] );
+            return fn( list[index++] );
         }
         else {
             return null;
