@@ -36,6 +36,10 @@ interface FluentWebdriver {
         timeout: number,
         pollFreq: number
     ): ExtendedPromise<boolean>;
+
+    sauceJobStatus( hasPassed: boolean ): ExtendedPromise<void>;
+
+    takeScreenshot(): ExtendedPromise<void>;
 }
 
 interface ExtendedPromise<T> extends Promise<T>, FluentWebdriver {

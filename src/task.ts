@@ -4,9 +4,8 @@
 
 /// <reference path="../typings/gruntjs/gruntjs.d.ts" />
 
-import {
-    Options, Credentials, BrowserData, BrowserDataGroups, Logger
-} from "./config";
+import {Options, Credentials, Logger} from "./config";
+import {BrowserResults} from "./results";
 import TunnelConf from "./tunnel";
 import driver = require("./driver");
 import load = require("./run");
@@ -44,14 +43,10 @@ function buildTask( log: Logger, options: Options ) {
         var tunnel = new TunnelConf(options, credentials, log);
         var driverBuilder = driver.build(options, credentials, log);
 
-        load.urls( options, tunnel, driverBuilder )
-            .catch(err => {
-                taskDone(err);
-            })
-            .then(() => {
-                taskDone();
-            })
-            .done();
+        load.urls( log, options, tunnel, driverBuilder ).then(
+            (result: BrowserResults) =>  taskDone(result.passed()),
+            (err) => taskDone(err)
+        );
     };
 }
 
@@ -59,60 +54,28 @@ function buildTask( log: Logger, options: Options ) {
 export = function ( grunt: IGrunt ) {
 
     /** Fetches a config option */
-    function getOption<T>( option: string, otherwise: T ): T {
-        return <T> grunt.config.get(baseTaskName + "." + option) || otherwise;
+    function getOption( option: string ): any {
+        return grunt.config.get(baseTaskName + "." + option);
     }
 
-    // Task execution configuration
-    var baseOptions: Options = {
-        browsers: [],
-        name: getOption<string>("name", "unnamed"),
-        buildId: getOption<string>("buildId", Date.now().toString()),
-        urls: getOption<string[]>("urls", []),
-        concurrent: getOption<number>("concurrent", 5),
-        setupTimeout: getOption<number>("setupTimeout", 60000),
-        testTimeout: getOption<number>("setupTimeout", 90000),
-        stepTimeout: getOption<number>("stepTimeout", 5000),
-        pollFrequency: getOption<number>("pollFrequency", 200),
-        mockTunnel: getOption<boolean>("mockTunnel", false),
-        seleniumHost: getOption<string>(
-            "seleniumHost", "ondemand.saucelabs.com"),
-        seleniumPort: getOption<number>("seleniumPort", 80)
-    };
-
-    /** Generates a full option hash from a set of browsers */
-    function buildOptions(browsers: BrowserDataGroups|BrowserData[]): Options {
-        var opts: any = {};
-        Object.keys(baseOptions).forEach(key => opts[key] = baseOptions[key]);
-
-        if ( browsers instanceof Array ) {
-            opts.browsers = browsers;
-        }
-        else {
-            opts.browsers = Object.keys(browsers)
-                .map(group => browsers[group])
-                .reduce((a, b) => a.concat(b), []);
-        }
-
-        return opts;
-    }
-
-    // Grab all the registered browsers
-    var browsers = getOption<BrowserDataGroups|BrowserData[]>("browsers", []);
+    var baseOptions = new Options(getOption);
 
     // A default task that builds everything
     grunt.registerTask(
         baseTaskName,
         "Loads a list of URLs using Saucelabs",
-        buildTask( grunt.log, buildOptions(browsers) )
+        buildTask(grunt.log, baseOptions)
     );
+
+    // Grab all the registered browsers
+    var browsers = getOption("browsers");
 
     if ( !(browsers instanceof Array) ) {
         Object.keys(browsers).map(group => {
             grunt.registerTask(
                 `${baseTaskName}:${group}`,
                 `Loads a list of URLs using Saucelabs in ${group}`,
-                buildTask( grunt.log, buildOptions(browsers[group]) )
+                buildTask(grunt.log, baseOptions.withBrowsers(browsers[group]))
             );
         });
     }

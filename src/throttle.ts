@@ -20,6 +20,9 @@ export function callbacks<R>(
     // The number of active threads
     var active: number = concurrent;
 
+    // The error to report if one occurs
+    var error: Error;
+
     /** Marks that one concurrency thread has closed itself down */
     function deactivate() {
         if ( isComplete ) {
@@ -28,7 +31,12 @@ export function callbacks<R>(
 
         active--;
         if ( active === 0 ) {
-            deferredResult.resolve(result);
+            if ( error ) {
+                deferredResult.reject(error);
+            }
+            else {
+                deferredResult.resolve(result);
+            }
             isComplete = true;
         }
     }
@@ -36,8 +44,8 @@ export function callbacks<R>(
     /** Marks that a job has failed */
     function fail( err: Error ) {
         if ( !isComplete ) {
-            isComplete = true;
-            deferredResult.reject(err);
+            error = error || err;
+            deactivate();
         }
         else {
             throw err;
@@ -56,19 +64,21 @@ export function callbacks<R>(
         process.nextTick(() => {
             try {
                 var promise: Q.Promise<R> = factory();
-                if ( !promise ) {
-                    deactivate();
-                }
-                else {
-                    var index = inc++;
-                    promise
-                        .then((value) => { result[index] = value; })
-                        .catch(fail)
-                        .then(next);
-                }
             }
             catch (err) {
                 fail(err);
+                return;
+            }
+
+            if ( !promise ) {
+                deactivate();
+            }
+            else {
+                var index = inc++;
+                promise
+                    .then((value) => { result[index] = value; })
+                    .catch(fail)
+                    .then(next);
             }
         });
     }

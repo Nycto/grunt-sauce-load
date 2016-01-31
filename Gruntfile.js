@@ -1,4 +1,4 @@
-/* globals module */
+/* globals module, require */
 module.exports = function(grunt) {
     "use strict";
 
@@ -89,7 +89,27 @@ module.exports = function(grunt) {
             }
         },
 
-        clean: [ "build", "tasks", "etc", "dest" ]
+        clean: [ "build", "tasks", "etc", "dest" ],
+
+        // Register saucelabs configuration for each browser group. This allows
+        // them to be run individually instead of all or nothing
+        'sauce-load': {
+            urls: [ 'http://localhost:8080' ],
+            name: 'Sanity check',
+            browsers: [ { browserName: 'chrome' } ],
+            mockTunnel: true,
+            seleniumHost: "127.0.0.1",
+            seleniumPort: 4444
+        },
+
+        connect: {
+            server: {
+                options: {
+                    port: 8080,
+                    base: './tests'
+                }
+            }
+        }
     });
 
     // These plugins provide necessary tasks.
@@ -98,6 +118,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-jshint');
     grunt.loadNpmTasks('grunt-contrib-clean');
+    grunt.loadNpmTasks('grunt-contrib-connect');
     grunt.loadNpmTasks('grunt-tslint');
     grunt.loadNpmTasks('grunt-ts');
 
@@ -105,4 +126,13 @@ module.exports = function(grunt) {
     grunt.registerTask('default', ['tslint', 'ts', 'js', 'copy']);
     grunt.registerTask('js', ['jshint', 'concat']);
     grunt.registerTask('dev', ['watch']);
+
+    grunt.registerTask(
+        "sanity",
+        "Sanity check with a local selenium instance",
+        function () {
+            require('./tasks/grunt-sauce-load.js')(grunt);
+            grunt.task.run('connect', 'sauce-load');
+        }
+    );
 };

@@ -2,22 +2,6 @@
 
 import Q = require("q");
 
-/** Adds a new value to be processed */
-export interface Enqueue<V> {
-
-    /** Adds a value to the queue */
-    add( value: V ): void;
-
-    /** Adds multiple values to the queue */
-    addMany( values: V[] ): void;
-}
-
-/** A value and its result */
-export interface Result<V, R> {
-    value: V;
-    result: R;
-}
-
 /** A set of objects */
 class Set<V> {
 
@@ -39,6 +23,37 @@ class Set<V> {
     }
 }
 
+/** Adds a new value to be processed */
+export class Enqueue<V> {
+
+    /** A set of already visited URLs */
+    private visited = new Set<V>();
+
+    constructor( private promise: Q.Promise<any>, private queue: V[] ) {}
+
+    /** Adds a value to the queue */
+    add ( value: V|V[] ): void {
+        if ( !this.promise.isPending() ) {
+            throw new Error("Queue already completed; can't add: " + value);
+        }
+        else if ( value instanceof Array ) {
+            for (var val of value) {
+                this.add(val);
+            }
+        }
+        else if ( !this.visited.has(value) ) {
+            this.visited.add(value);
+            this.queue.push(value);
+        }
+    }
+}
+
+/** A value and its result */
+export interface Result<V, R> {
+    value: V;
+    result: R;
+}
+
 /**
  * Creates a queue that processes values. Each function execution has a chance
  * to add more values to process. The queue is processed sequentially.
@@ -53,29 +68,13 @@ export function execute<V, R>(
     // The resulting future
     var out = Q.defer<Result<V, R>[]>();
 
-    // Track visited values to prevent duplicate processing
-    var visited = new Set<V>(visited);
-
     // The list of values to process
-    var queue = initial.slice(0);
+    var queue: V[] = [];
 
     // Adds more values to the queue
-    var adder: Enqueue<V> = {
-        add: (value: V) => {
-            if ( !out.promise.isPending() ) {
-                throw new Error("Queue already completed; can't add: " + value);
-            }
-            if ( !visited.has(value) ) {
-                visited.add(value);
-                queue.push(value);
-            }
-        },
-        addMany: (values: V[]) => {
-            for (var value in values) {
-                this.add(value);
-            }
-        }
-    };
+    var enqueue = new Enqueue<V>(out.promise, queue);
+
+    initial.forEach(value => enqueue.add(value));
 
     // The resulting map of values
     var results: Result<V, R>[] = [];
@@ -92,7 +91,7 @@ export function execute<V, R>(
 
             var nextResult: Q.Promise<R>;
             try {
-                nextResult = fn(nextValue, adder);
+                nextResult = fn(nextValue, enqueue);
             }
             catch (err) {
                 out.reject(err);
