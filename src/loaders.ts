@@ -25,21 +25,31 @@ export type Modes = "aggregate" | "followup" | LoaderCreator;
 
 /** Returns a test step to wait for window load */
 function waitForWindowLoad(driver: PromiseChainWebdriver, opts: TestOptions) {
-    return (): ExtendedPromise<boolean> => driver
-        .waitForConditionInBrowser(
-            "document.readyState === 'complete'",
-            opts.stepTimeout,
-            opts.pollFrequency
+    return (): ExtendedPromise<void> => driver
+        .executeAsync<void>(
+            `var done = arguments[arguments.length - 1];
+            document.readyState === 'complete' ?
+                done() :
+                window.addEventListener('load', done);`
         );
 }
 
 /** Waits for window.global_test_results */
 function waitForTestResults(driver: PromiseChainWebdriver, opts: TestOptions) {
-    return (): ExtendedPromise<boolean> => driver
-        .waitForConditionInBrowser(
-            "window.hasOwnProperty('global_test_results')",
-            opts.testTimeout,
-            opts.pollFrequency);
+    return (): ExtendedPromise<void> => driver
+        .executeAsync<void>(
+            `var done = arguments[arguments.length - 1];
+            var check = function () {
+                window.hasOwnProperty('global_test_results') && done();
+            };
+            check();
+            setInterval(check, ${opts.pollFrequency});
+            setTimeout(function () {
+                done(new Error(
+                    "Timed out looking for window.global_test_results"));
+            }, ${opts.testTimeout});
+            `
+        );
 }
 
 /** Converts a URL from relative to absolute */

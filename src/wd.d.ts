@@ -40,6 +40,8 @@ interface FluentWebdriver {
     sauceJobStatus( hasPassed: boolean ): ExtendedPromise<void>;
 
     takeScreenshot(): ExtendedPromise<void>;
+
+    executeAsync<T>( code: string, args?: any[] ): ExtendedPromise<T>;
 }
 
 interface ExtendedPromise<T> extends Promise<T>, FluentWebdriver {
