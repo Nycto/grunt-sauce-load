@@ -22,34 +22,47 @@ export type LoaderCreator = (
 /** The different kinds of loaders available */
 export type Modes = "aggregate" | "followup" | LoaderCreator;
 
+/**
+ * Android can't handle line breaks when executing JS, so they need to
+ * be stripped.
+ */
+function prepareJs( code: string ): string {
+    return code.replace(/[\r\n]/g, "").trim();
+}
 
 /** Returns a test step to wait for window load */
 function waitForWindowLoad(driver: PromiseChainWebdriver, opts: TestOptions) {
     return (): ExtendedPromise<void> => driver
-        .executeAsync<void>(
-            `var done = arguments[arguments.length - 1];
+        .executeAsync<void>(prepareJs(
+            `
+            var args = Array.prototype.slice.call(arguments);
+            var done = args[args.length - 1];
             document.readyState === 'complete' ?
                 done() :
-                window.addEventListener('load', done);`
-        );
+                window.addEventListener('load', done);
+            `
+        ));
 }
 
 /** Waits for window.global_test_results */
 function waitForTestResults(driver: PromiseChainWebdriver, opts: TestOptions) {
     return (): ExtendedPromise<void> => driver
-        .executeAsync<void>(
-            `var done = arguments[arguments.length - 1];
+        .executeAsync<void>(prepareJs(
+            `
+            var args = Array.prototype.slice.call(arguments);
+            var done = args[args.length - 1];
             var check = function () {
-                window.hasOwnProperty('global_test_results') && done();
+                window.global_test_results ?
+                    done() :
+                    setTimeout(check, ${opts.pollFrequency});
             };
             check();
-            setInterval(check, ${opts.pollFrequency});
             setTimeout(function () {
                 done(new Error(
                     "Timed out looking for window.global_test_results"));
-            }, ${opts.testTimeout});
+            }, ${Math.round(opts.testTimeout * 0.9)});
             `
-        );
+        ));
 }
 
 /** Converts a URL from relative to absolute */
