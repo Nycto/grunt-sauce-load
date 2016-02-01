@@ -12,7 +12,7 @@ export interface TestResult {
 
 /** Fetches a value from an object if it exists, or reverts to a default */
 function get<T>(from: any, key: string, otherwise: T = undefined): T {
-    return from.hasOwnProperty(key) ? from[key] : otherwise;
+    return (from && from.hasOwnProperty(key)) ? from[key] : otherwise;
 }
 
 /** The result of an entire test suite */
