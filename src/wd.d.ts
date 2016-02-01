@@ -42,6 +42,8 @@ interface FluentWebdriver {
     takeScreenshot(): ExtendedPromise<void>;
 
     executeAsync<T>( code: string, args?: any[] ): ExtendedPromise<T>;
+
+    getSessionId(): ExtendedPromise<string>;
 }
 
 interface ExtendedPromise<T> extends Promise<T>, FluentWebdriver {

@@ -88,7 +88,14 @@ export class WebDriverSetup {
                 );
             })
             .finally(() => {
-                return driver.quit();
+                // Make sure the session is closed. But if the session never
+                // fully got started, it won't have a session ID. This will
+                // cause an error. So check for that session ID first.
+                return driver.getSessionId().then(sess => {
+                    if ( sess ) {
+                        return driver.quit();
+                    }
+                });
             });
     }
 }
