@@ -73,7 +73,8 @@ export class WebDriverSetup {
         return this.init(conf, driver)
             .timeout(
                 this.options.setupTimeout,
-                `Timed out initializing browser: ${this.options.setupTimeout}ms`
+                `Timed out initializing browser after ` +
+                `${this.options.setupTimeout}ms: ${this.browser.readable()}`
             )
             .then((session: string): Q.Promise<T> => {
                 this.log.writeln(
@@ -84,7 +85,8 @@ export class WebDriverSetup {
 
                 return fn(driver).timeout(
                     this.options.testTimeout,
-                    `Timed out running test: ${this.options.testTimeout}ms`
+                    `Timed out running test after ` +
+                    `${this.options.testTimeout}ms: ${this.browser.readable()}`
                 );
             })
             .finally(() => {
