@@ -1,0 +1,46 @@
+{
+  "name": "grunt-sauce-load",
+  "description": "Loads URLs in Saucelabs",
+  "version": "0.1.0",
+  "homepage": "https://github.com/Nycto/grunt-sauce-load",
+  "author": {
+    "name": "Nycto",
+    "email": "James@RoundEights.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Nycto/grunt-sauce-load.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nycto/grunt-sauce-load/issues"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "grunt"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.5",
+    "grunt-contrib-clean": "^0.7.0",
+    "grunt-contrib-concat": "^0.5.1",
+    "grunt-contrib-connect": "^0.11.2",
+    "grunt-contrib-copy": "^0.8.2",
+    "grunt-contrib-jshint": "^0.11.3",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-ts": "^5.3.0-beta.3",
+    "grunt-tslint": "^3.0.1",
+    "tslint": "next",
+    "typescript": "next"
+  },
+  "dependencies": {
+    "cleankill": "^1.0.2",
+    "q": "^1.4.1",
+    "sauce-tunnel": "^2.3.0",
+    "wd": "^0.4.0"
+  },
+  "peerDependencies": {
+    "grunt": "~0.4.5"
+  },
+  "keywords": [
+    "gruntplugin"
+  ]
+}
