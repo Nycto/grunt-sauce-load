@@ -117,7 +117,7 @@ define("results", ["require", "exports"], function (require, exports) {
     "use strict";
     function get(from, key, otherwise) {
         if (otherwise === void 0) { otherwise = undefined; }
-        return from.hasOwnProperty(key) ? from[key] : otherwise;
+        return (from && from.hasOwnProperty(key)) ? from[key] : otherwise;
     }
     var SuiteResult = (function () {
         function SuiteResult(value, defaultDuration) {
@@ -436,15 +436,21 @@ define("driver", ["require", "exports", "wd", "q"], function (require, exports, 
                 "tunnel-identifier": this.tunnel.identifier
             });
             return this.init(conf, driver)
-                .timeout(this.options.setupTimeout, "Timed out initializing browser: " + this.options.setupTimeout + "ms")
+                .timeout(this.options.setupTimeout, "Timed out initializing browser after " +
+                (this.options.setupTimeout + "ms: " + this.browser.readable()))
                 .then(function (session) {
                 _this.log.writeln(("* " + _this.browser.readable() + ": ") +
                     ("https://saucelabs.com/tests/" + session[0]));
                 driver.setAsyncScriptTimeout(_this.options.testTimeout);
-                return fn(driver).timeout(_this.options.testTimeout, "Timed out running test: " + _this.options.testTimeout + "ms");
+                return fn(driver).timeout(_this.options.testTimeout, "Timed out running test after " +
+                    (_this.options.testTimeout + "ms: " + _this.browser.readable()));
             })
                 .finally(function () {
-                return driver.quit();
+                return driver.getSessionId().then(function (sess) {
+                    if (sess) {
+                        return driver.quit();
+                    }
+                });
             });
         };
         return WebDriverSetup;
