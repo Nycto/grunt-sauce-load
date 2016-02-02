@@ -48,10 +48,10 @@ define("queue", ["require", "exports", "q"], function (require, exports, Q) {
             initial.forEach(function (value) { return _this.add(value); });
         }
         Set.prototype.has = function (value) {
-            this.data[JSON.stringify(value)] = value;
+            return this.data.hasOwnProperty(JSON.stringify(value));
         };
         Set.prototype.add = function (value) {
-            return this.data.hasOwnProperty(JSON.stringify(value));
+            this.data[JSON.stringify(value)] = value;
         };
         return Set;
     }());
