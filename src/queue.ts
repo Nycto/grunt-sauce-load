@@ -13,13 +13,13 @@ class Set<V> {
     }
 
     /** Whether a value exists */
-    has( value: V ): void {
-        this.data[ JSON.stringify(value) ] = value;
+    has( value: V ): boolean {
+        return this.data.hasOwnProperty(JSON.stringify(value));
     }
 
     /** Adds a value */
-    add( value: V ): boolean {
-        return this.data.hasOwnProperty(JSON.stringify(value));
+    add( value: V ): void {
+        this.data[ JSON.stringify(value) ] = value;
     }
 }
 
