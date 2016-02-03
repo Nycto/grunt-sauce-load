@@ -64,9 +64,9 @@ export class WebDriverSetup {
         );
 
         var conf: WebDriverInitConfig = this.browser.extend({
-            name: this.options.name,
-            build: this.options.buildId.toString(),
-            "public": this.options.visibility,
+            name: this.options.testname,
+            build: this.options.build.toString(),
+            "public": this.options.public,
             "tunnel-identifier": this.tunnel.identifier
         });
 
@@ -81,12 +81,13 @@ export class WebDriverSetup {
                     `* ${this.browser.readable()}: ` +
                     `https://saucelabs.com/tests/${session[0]}`);
 
-                driver.setAsyncScriptTimeout(this.options.testTimeout);
+                driver.setAsyncScriptTimeout(this.options["max-duration"]);
 
                 return fn(driver).timeout(
-                    this.options.testTimeout,
+                    this.options["max-duration"],
                     `Timed out running test after ` +
-                    `${this.options.testTimeout}ms: ${this.browser.readable()}`
+                    `${this.options["max-duration"]}ms: ` +
+                    `${this.browser.readable()}`
                 );
             })
             .finally(() => {

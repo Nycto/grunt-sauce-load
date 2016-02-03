@@ -54,13 +54,13 @@ function waitForTestResults(driver: PromiseChainWebdriver, opts: TestOptions) {
             var check = function () {
                 window.global_test_results ?
                     done() :
-                    setTimeout(check, ${opts.pollFrequency});
+                    setTimeout(check, ${opts.pollInterval});
             };
             check();
             setTimeout(function () {
                 done(new Error(
                     "Timed out looking for window.global_test_results"));
-            }, ${Math.round(opts.testTimeout * 0.9)});
+            }, ${Math.round(opts["max-duration"] * 0.9)});
             `
         ));
 }

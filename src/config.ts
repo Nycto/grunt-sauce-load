@@ -68,16 +68,16 @@ export interface TestOptions {
     setupTimeout: number;
 
     /** The timeout for running a test */
-    testTimeout: number;
+    "max-duration": number;
 
     /** How long until an individual step times out in selenium */
     stepTimeout: number;
 
     /** How often to poll the remote browser for updates */
-    pollFrequency: number;
+    pollInterval: number;
 
     /** The visibility of the individual tests */
-    visibility: Visibility;
+    public: Visibility;
 
     /** The mode used to load URLs */
     mode: Modes;
@@ -87,16 +87,16 @@ export interface TestOptions {
 export class Options implements TestOptions {
 
     /** The readable name to give this build */
-    name: string = "Unnamed";
+    testname: string = "Unnamed";
 
     /** A unique ID for this build */
-    buildId: string|number = Date.now();
+    build: string|number = Date.now();
 
     /** The browsers to test */
     browsers: BrowserData[] = [];
 
     /** the number of concurrent browsers to run */
-    concurrent: number = 5;
+    throttled: number = 5;
 
     /** Allows for a mock tunnel to be created */
     mockTunnel: boolean = false;
@@ -114,16 +114,16 @@ export class Options implements TestOptions {
     setupTimeout: number = 60000;
 
     /** The timeout for running a test */
-    testTimeout: number = 90000;
+    "max-duration": number = 90000;
 
     /** How long until an individual step times out in selenium */
     stepTimeout: number = 5000;
 
     /** How often to poll the remote browser for updates */
-    pollFrequency: number = 200;
+    pollInterval: number = 200;
 
     /** The visibility of the individual tests */
-    visibility: Visibility = "public";
+    public: Visibility = "public";
 
     /** The URL loading mode */
     mode: Modes = "aggregate";

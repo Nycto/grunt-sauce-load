@@ -21,7 +21,7 @@ export function urls (
 
         // Run some set of browsers at the same time
         return throttle.list<Browser, [Browser, SuiteResult]>(
-            opts.concurrent,
+            opts.throttled,
             opts.browsers.map(data => new Browser(data)),
             (browser: Browser) => {
 

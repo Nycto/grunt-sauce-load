@@ -31,7 +31,7 @@ function buildTask( log: Logger, options: Options ) {
             throw new Error("SAUCE_ACCESS_KEY as not defined");
         }
 
-        log.writeln("Build ID: " + options.buildId);
+        log.writeln("Build ID: " + options.build);
 
         var taskDone = this.async();
 
