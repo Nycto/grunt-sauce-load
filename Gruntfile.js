@@ -123,7 +123,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-ts');
 
     // By default, lint and run all tests.
-    grunt.registerTask('default', ['tslint', 'ts', 'js', 'copy']);
+    grunt.registerTask('default', ['ts', 'tslint', 'js', 'copy']);
     grunt.registerTask('js', ['jshint', 'concat']);
     grunt.registerTask('dev', ['watch']);
 
