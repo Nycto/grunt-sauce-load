@@ -198,7 +198,7 @@ define("loaders", ["require", "exports", "results", "q", "url"], function (requi
     }
     function waitForTestResults(driver, opts) {
         return function () { return driver
-            .executeAsync(prepareJs("\n            var args = Array.prototype.slice.call(arguments);\n            var done = args[args.length - 1];\n            var check = function () {\n                window.global_test_results ?\n                    done() :\n                    setTimeout(check, " + opts.pollFrequency + ");\n            };\n            check();\n            setTimeout(function () {\n                done(new Error(\n                    \"Timed out looking for window.global_test_results\"));\n            }, " + Math.round(opts.testTimeout * 0.9) + ");\n            ")); };
+            .executeAsync(prepareJs("\n            var args = Array.prototype.slice.call(arguments);\n            var done = args[args.length - 1];\n            var check = function () {\n                window.global_test_results ?\n                    done() :\n                    setTimeout(check, " + opts.pollInterval + ");\n            };\n            check();\n            setTimeout(function () {\n                done(new Error(\n                    \"Timed out looking for window.global_test_results\"));\n            }, " + Math.round(opts["max-duration"] * 0.9) + ");\n            ")); };
     }
     function relToAbsUrl(baseUrl) {
         var parsedBase = url.parse(baseUrl);
@@ -274,6 +274,20 @@ define("loaders", ["require", "exports", "results", "q", "url"], function (requi
 });
 define("config", ["require", "exports"], function (require, exports) {
     "use strict";
+    var BrowserOptionsKeys = [
+        "urls", "setupTimeout", "max-duration", "stepTimeout",
+        "pollInterval", "public", "mode"
+    ];
+    var BrowserDataKeys = ["browserName", "platform", "version", "deviceName"];
+    function extend(from, keys, onto) {
+        for (var _i = 0, keys_1 = keys; _i < keys_1.length; _i++) {
+            var key = keys_1[_i];
+            if (from.hasOwnProperty(key)) {
+                onto[key] = from[key];
+            }
+        }
+        return onto;
+    }
     var Browser = (function () {
         function Browser(browser) {
             this.browser = browser;
@@ -283,47 +297,60 @@ define("config", ["require", "exports"], function (require, exports) {
         }
         Browser.prototype.readable = function () {
             var _this = this;
-            return Object.keys(this.browser)
+            return BrowserDataKeys
+                .filter(function (key) { return _this.browser[key]; })
                 .map(function (key) { return _this.browser[key]; })
                 .map(function (str) { return str.charAt(0).toUpperCase() + str.substr(1); })
                 .join(" / ");
         };
         Browser.prototype.extend = function (obj) {
             var output = {};
-            for (var _i = 0, _a = Object.keys(this.browser); _i < _a.length; _i++) {
+            for (var _i = 0, _a = Object.keys(obj); _i < _a.length; _i++) {
                 var key = _a[_i];
-                output[key] = this.browser[key];
-            }
-            for (var _b = 0, _c = Object.keys(obj); _b < _c.length; _b++) {
-                var key = _c[_b];
                 output[key] = obj[key];
             }
-            return output;
+            return extend(this.browser, BrowserDataKeys, output);
+        };
+        Browser.prototype.options = function () {
+            return extend(this.browser, BrowserOptionsKeys, {});
         };
         return Browser;
     }());
     exports.Browser = Browser;
     var Options = (function () {
         function Options(getOption) {
-            this.name = "Unnamed";
-            this.buildId = Date.now();
+            this.testname = "Unnamed";
+            this.build = Date.now();
             this.browsers = [];
-            this.concurrent = 5;
+            this.throttled = 5;
+            this.tunnelTimeout = 90000;
             this.mockTunnel = false;
             this.seleniumHost = "ondemand.saucelabs.com";
             this.seleniumPort = 80;
-            this.urls = [];
-            this.setupTimeout = 60000;
-            this.testTimeout = 90000;
-            this.stepTimeout = 5000;
-            this.pollFrequency = 200;
-            this.visibility = "public";
-            this.mode = "aggregate";
+            this.defaultBrowserOptions = {
+                urls: [],
+                setupTimeout: 60000,
+                "max-duration": 90000,
+                stepTimeout: 5000,
+                pollInterval: 200,
+                public: "public",
+                mode: "aggregate"
+            };
             for (var key in this) {
-                if (this.hasOwnProperty(key) && key !== "browsers") {
+                if (this.hasOwnProperty(key) &&
+                    key !== "browsers" &&
+                    key !== "defaultBrowserOptions") {
                     var value = getOption(key);
                     if (value !== undefined) {
                         this[key] = value;
+                    }
+                }
+            }
+            for (var key in this.defaultBrowserOptions) {
+                if (this.defaultBrowserOptions.hasOwnProperty(key)) {
+                    var value = getOption(key);
+                    if (value !== undefined) {
+                        this.defaultBrowserOptions[key] = value;
                     }
                 }
             }
@@ -337,6 +364,10 @@ define("config", ["require", "exports"], function (require, exports) {
                     .reduce(function (a, b) { return a.concat(b); }, []);
             }
         }
+        Options.prototype.getTestOpts = function (browser) {
+            var base = extend(this.defaultBrowserOptions, BrowserOptionsKeys, {});
+            return extend(browser.options(), BrowserOptionsKeys, base);
+        };
         Options.prototype.withBrowsers = function (browsers) {
             var _this = this;
             return new Options(function (key) { return key === "browsers" ? browsers : _this[key]; });
@@ -381,7 +412,7 @@ define("tunnel", ["require", "exports", "q", "cleankill"], function (require, ex
                     }
                     stopped = stopping.promise.then(function () {
                         _this.log.ok("Tunnel Closed");
-                    }).timeout(_this.options.setupTimeout, "Timed out closing tunnel: " + _this.options.setupTimeout + "ms");
+                    }).timeout(_this.options.tunnelTimeout, "Timed out closing tunnel: " + _this.options.tunnelTimeout + "ms");
                 }
                 return stopped;
             };
@@ -389,7 +420,7 @@ define("tunnel", ["require", "exports", "q", "cleankill"], function (require, ex
                 stopTunnel().finally(done);
             });
             return defer.promise
-                .timeout(this.options.setupTimeout, "Timed out creating tunnel: " + this.options.setupTimeout + "ms")
+                .timeout(this.options.tunnelTimeout, "Timed out creating tunnel: " + this.options.tunnelTimeout + "ms")
                 .then(function () { return fn(tunnel).finally(stopTunnel); });
         };
         return TunnelConf;
@@ -429,21 +460,23 @@ define("driver", ["require", "exports", "wd", "q"], function (require, exports, 
             var _this = this;
             this.log.writeln("* Starting: " + this.browser.readable());
             var driver = wd.promiseChainRemote(this.options.seleniumHost, this.options.seleniumPort, this.credentials.user, this.credentials.key);
+            var testOpts = this.options.getTestOpts(this.browser);
             var conf = this.browser.extend({
-                name: this.options.name,
-                build: this.options.buildId.toString(),
-                "public": this.options.visibility,
+                name: this.options.testname,
+                build: this.options.build.toString(),
+                "public": testOpts.public,
                 "tunnel-identifier": this.tunnel.identifier
             });
             return this.init(conf, driver)
-                .timeout(this.options.setupTimeout, "Timed out initializing browser after " +
-                (this.options.setupTimeout + "ms: " + this.browser.readable()))
+                .timeout(testOpts.setupTimeout, "Timed out initializing browser after " +
+                (testOpts.setupTimeout + "ms: " + this.browser.readable()))
                 .then(function (session) {
                 _this.log.writeln(("* " + _this.browser.readable() + ": ") +
                     ("https://saucelabs.com/tests/" + session[0]));
-                driver.setAsyncScriptTimeout(_this.options.testTimeout);
-                return fn(driver).timeout(_this.options.testTimeout, "Timed out running test after " +
-                    (_this.options.testTimeout + "ms: " + _this.browser.readable()));
+                driver.setAsyncScriptTimeout(testOpts["max-duration"]);
+                return fn(driver).timeout(testOpts["max-duration"], "Timed out running test after " +
+                    (testOpts["max-duration"] + "ms: ") +
+                    ("" + _this.browser.readable()));
             })
                 .finally(function () {
                 return driver.getSessionId().then(function (sess) {
@@ -537,9 +570,10 @@ define("run", ["require", "exports", "config", "results", "loaders", "throttle",
     "use strict";
     function urls(log, opts, tunnelConf, driverBuilder) {
         return tunnelConf.run(function (tunnel) {
-            return throttle.list(opts.concurrent, opts.browsers.map(function (data) { return new config_1.Browser(data); }), function (browser) {
+            return throttle.list(opts.throttled, opts.browsers.map(function (data) { return new config_1.Browser(data); }), function (browser) {
+                var testOpts = opts.getTestOpts(browser);
                 return driverBuilder(tunnel, browser).run(function (driver) {
-                    return queue.execute(opts.urls, loader.select(opts.mode)(driver, opts)).then(function (results) {
+                    return queue.execute(testOpts.urls, loader.select(testOpts.mode)(driver, testOpts)).then(function (results) {
                         return results_2.SuiteResult.combine(results.map(function (result) { return result.result; }));
                     }).tap(function (results) {
                         results.print(log, browser);
@@ -571,7 +605,7 @@ define("task", ["require", "exports", "config", "tunnel", "driver", "run"], func
             else if (process.env.SAUCE_ACCESS_KEY === undefined) {
                 throw new Error("SAUCE_ACCESS_KEY as not defined");
             }
-            log.writeln("Build ID: " + options.buildId);
+            log.writeln("Build ID: " + options.build);
             var taskDone = this.async();
             var credentials = {
                 user: process.env.SAUCE_USERNAME,
