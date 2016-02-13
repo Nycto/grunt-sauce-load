@@ -63,30 +63,32 @@ export class WebDriverSetup {
             this.credentials.user, this.credentials.key
         );
 
+        var testOpts = this.options.getTestOpts(this.browser);
+
         var conf: WebDriverInitConfig = this.browser.extend({
             name: this.options.testname,
             build: this.options.build.toString(),
-            "public": this.options.public,
+            "public": testOpts.public,
             "tunnel-identifier": this.tunnel.identifier
         });
 
         return this.init(conf, driver)
             .timeout(
-                this.options.setupTimeout,
+                testOpts.setupTimeout,
                 `Timed out initializing browser after ` +
-                `${this.options.setupTimeout}ms: ${this.browser.readable()}`
+                `${testOpts.setupTimeout}ms: ${this.browser.readable()}`
             )
             .then((session: string): Q.Promise<T> => {
                 this.log.writeln(
                     `* ${this.browser.readable()}: ` +
                     `https://saucelabs.com/tests/${session[0]}`);
 
-                driver.setAsyncScriptTimeout(this.options["max-duration"]);
+                driver.setAsyncScriptTimeout(testOpts["max-duration"]);
 
                 return fn(driver).timeout(
-                    this.options["max-duration"],
+                    testOpts["max-duration"],
                     `Timed out running test after ` +
-                    `${this.options["max-duration"]}ms: ` +
+                    `${testOpts["max-duration"]}ms: ` +
                     `${this.browser.readable()}`
                 );
             })

@@ -65,8 +65,8 @@ export default class TunnelConf {
                 stopped = stopping.promise.then(() => {
                     this.log.ok("Tunnel Closed");
                 }).timeout(
-                    this.options.setupTimeout,
-                    `Timed out closing tunnel: ${this.options.setupTimeout}ms`
+                    this.options.tunnelTimeout,
+                    `Timed out closing tunnel: ${this.options.tunnelTimeout}ms`
                 );
             }
 
@@ -80,8 +80,8 @@ export default class TunnelConf {
 
         return defer.promise
             .timeout(
-                this.options.setupTimeout,
-                `Timed out creating tunnel: ${this.options.setupTimeout}ms`
+                this.options.tunnelTimeout,
+                `Timed out creating tunnel: ${this.options.tunnelTimeout}ms`
             )
             .then(() => fn(tunnel).finally(stopTunnel));
     }

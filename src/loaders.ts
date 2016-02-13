@@ -2,7 +2,7 @@
 
 import {Enqueue} from "./queue";
 import {SuiteResult} from "./results";
-import {TestOptions} from "./config";
+import {BrowserOptions} from "./config";
 import Q = require("q");
 import url = require("url");
 
@@ -16,7 +16,7 @@ export type UrlLoader = (
 /** Creates a new UrlLoader */
 export type LoaderCreator = (
     driver: PromiseChainWebdriver,
-    options: TestOptions
+    options: BrowserOptions
 ) => UrlLoader
 
 /** The different kinds of loaders available */
@@ -31,7 +31,10 @@ function prepareJs( code: string ): string {
 }
 
 /** Returns a test step to wait for window load */
-function waitForWindowLoad(driver: PromiseChainWebdriver, opts: TestOptions) {
+function waitForWindowLoad(
+    driver: PromiseChainWebdriver,
+    opts: BrowserOptions
+) {
     return (): ExtendedPromise<void> => driver
         .executeAsync<void>(prepareJs(
             `
@@ -45,7 +48,10 @@ function waitForWindowLoad(driver: PromiseChainWebdriver, opts: TestOptions) {
 }
 
 /** Waits for window.global_test_results */
-function waitForTestResults(driver: PromiseChainWebdriver, opts: TestOptions) {
+function waitForTestResults(
+    driver: PromiseChainWebdriver,
+    opts: BrowserOptions
+) {
     return (): ExtendedPromise<void> => driver
         .executeAsync<void>(prepareJs(
             `
@@ -114,7 +120,7 @@ function getResults(driver: PromiseChainWebdriver, start: number) {
 /** Loads a URL in the remote browser and aggregates all test results */
 const aggregate: LoaderCreator = function (
     driver: PromiseChainWebdriver,
-    opts: TestOptions
+    opts: BrowserOptions
 ): UrlLoader {
     return (url, enqueue) => {
         var start = Date.now();
@@ -131,7 +137,7 @@ const aggregate: LoaderCreator = function (
 /** Uses results from the first URL load, then follows up with detailed URLs */
 const followup: LoaderCreator = function (
     driver: PromiseChainWebdriver,
-    opts: TestOptions
+    opts: BrowserOptions
 ): UrlLoader {
 
     var isFirst: boolean = true;

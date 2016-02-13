@@ -15,6 +15,38 @@ export interface Credentials {
     key: string;
 }
 
+/** Options that specifically affect individual browsers tests */
+export interface BrowserOptions {
+
+    /** The URLs to load in each browser */
+    urls?: string[];
+
+    /** The timeout for setting up the environment for running a test */
+    setupTimeout?: number;
+
+    /** The timeout for running a test */
+    "max-duration"?: number;
+
+    /** How long until an individual step times out in selenium */
+    stepTimeout?: number;
+
+    /** How often to poll the remote browser for updates */
+    pollInterval?: number;
+
+    /** The visibility of the individual tests */
+    public?: Visibility;
+
+    /** The mode used to load URLs */
+    mode?: Modes;
+}
+
+// A list of keys in the BrowserData interface. I would prefer to do this via
+// reflection, but TypeScript doesn't support listing interface keys by type
+const BrowserOptionsKeys = [
+    "urls", "setupTimeout", "max-duration", "stepTimeout",
+    "pollInterval", "public", "mode"
+];
+
 /** The data needed for Saucelabs to identify a browser */
 export interface BrowserData {
     browserName?: string;
@@ -23,12 +55,23 @@ export interface BrowserData {
     deviceName?: string;
 }
 
-/** A table of grouped browsers */
-export type BrowserDataGroups = { [key: string]: BrowserData[] };
+// A list of keys in the BrowserData interface. I would prefer to do this via
+// reflection, but TypeScript doesn't support listing interface keys by type
+const BrowserDataKeys = [ "browserName", "platform", "version", "deviceName" ];
+
+/** Adds specific keys from one object to another */
+function extend(from: {}, keys: string[], onto: {}): any {
+    for (var key of keys) {
+        if ( from.hasOwnProperty(key) ) {
+            onto[key] = from[key];
+        }
+    }
+    return onto;
+}
 
 /** A browser definition */
 export class Browser {
-    constructor( private browser: BrowserData ) {
+    constructor( private browser: BrowserData&BrowserOptions ) {
         if ( !browser ) {
             throw new Error("Invalid Argument: BrowserData is falsey");
         }
@@ -36,7 +79,8 @@ export class Browser {
 
     /** Returns a readable version of this browser */
     readable(): string {
-        return Object.keys(this.browser)
+        return BrowserDataKeys
+            .filter(key => this.browser[key])
             .map(key => this.browser[key])
             .map(str => str.charAt(0).toUpperCase() + str.substr(1))
             .join(" / ");
@@ -45,46 +89,23 @@ export class Browser {
     /** Combines the browser description with another object */
     extend<T>( obj: T ): BrowserData&T {
         var output = {};
-        for (var key of Object.keys(this.browser)) {
-            output[key] = this.browser[key];
-        }
         for (var key of Object.keys(obj)) {
             output[key] = obj[key];
         }
-        return <any> output;
+        return <any> extend(this.browser, BrowserDataKeys, output);
+    }
+
+    /** Returns JUST the BrowserOptions part of this object */
+    options(): BrowserOptions {
+        return <any> extend(this.browser, BrowserOptionsKeys, {});
     }
 }
 
 /** The various visibility modes for a test */
 export type Visibility = "public"|"public restricted"|"share"|"test"|"private";
 
-/** Options that specifically affect individual browsers tests */
-export interface TestOptions {
-
-    /** The URLs to load in each browser */
-    urls: string[];
-
-    /** The timeout for setting up the environment for running a test */
-    setupTimeout: number;
-
-    /** The timeout for running a test */
-    "max-duration": number;
-
-    /** How long until an individual step times out in selenium */
-    stepTimeout: number;
-
-    /** How often to poll the remote browser for updates */
-    pollInterval: number;
-
-    /** The visibility of the individual tests */
-    public: Visibility;
-
-    /** The mode used to load URLs */
-    mode: Modes;
-}
-
 /** The list of valid options that can be passed to this module */
-export class Options implements TestOptions {
+export class Options {
 
     /** The readable name to give this build */
     testname: string = "Unnamed";
@@ -98,6 +119,9 @@ export class Options implements TestOptions {
     /** the number of concurrent browsers to run */
     throttled: number = 5;
 
+    /** The timeout for connecting and disconnecting the tunnel */
+    tunnelTimeout: number = 90000;
+
     /** Allows for a mock tunnel to be created */
     mockTunnel: boolean = false;
 
@@ -107,33 +131,54 @@ export class Options implements TestOptions {
     /** The name of the selenium host to connect to */
     seleniumPort: number = 80;
 
-    /** The URLs to load in each browser */
-    urls: string[] = [];
+    /**
+     * Any options to apply to individual tests if they aren't specifically
+     * overridden by a test config
+     */
+    private defaultBrowserOptions: BrowserOptions = {
 
-    /** The timeout for setting up the environment for running a test */
-    setupTimeout: number = 60000;
+        /** The URLs to load in each browser */
+        urls: [],
 
-    /** The timeout for running a test */
-    "max-duration": number = 90000;
+        /** The timeout for setting up the environment for running a test */
+        setupTimeout: 60000,
 
-    /** How long until an individual step times out in selenium */
-    stepTimeout: number = 5000;
+        /** The timeout for running a test */
+        "max-duration": 90000,
 
-    /** How often to poll the remote browser for updates */
-    pollInterval: number = 200;
+        /** How long until an individual step times out in selenium */
+        stepTimeout: 5000,
 
-    /** The visibility of the individual tests */
-    public: Visibility = "public";
+        /** How often to poll the remote browser for updates */
+        pollInterval:  200,
 
-    /** The URL loading mode */
-    mode: Modes = "aggregate";
+        /** The visibility of the individual tests */
+        public: "public",
+
+        /** The URL loading mode */
+        mode: "aggregate"
+    };
 
     constructor( getOption: (key: string) => any ) {
+
+        // Apply the settings to the values in this object
         for ( var key in this ) {
-            if ( this.hasOwnProperty(key) && key !== "browsers" ) {
+            if ( this.hasOwnProperty(key) &&
+                    key !== "browsers" &&
+                    key !== "defaultBrowserOptions" ) {
                 var value = getOption(key);
                 if ( value !== undefined ) {
                     this[key] = value;
+                }
+            }
+        }
+
+        // Apply the test specific options
+        for ( var key in this.defaultBrowserOptions ) {
+            if ( this.defaultBrowserOptions.hasOwnProperty(key) ) {
+                var value = getOption(key);
+                if ( value !== undefined ) {
+                    this.defaultBrowserOptions[key] = value;
                 }
             }
         }
@@ -147,6 +192,12 @@ export class Options implements TestOptions {
                 .map(group => browsers[group])
                 .reduce((a, b) => a.concat(b), []);
         }
+    }
+
+    // Returns the options specific to testing a given Browser
+    getTestOpts(browser: Browser): BrowserOptions {
+        var base = extend(this.defaultBrowserOptions, BrowserOptionsKeys, {});
+        return extend(browser.options(), BrowserOptionsKeys, base);
     }
 
     /** Takes these exact options, but with a new set of browsers */

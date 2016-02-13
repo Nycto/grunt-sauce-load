@@ -1,6 +1,6 @@
 /// <reference path="../typings/q/Q.d.ts" />
 
-import {Options, TestOptions, Browser, Logger} from "./config";
+import {Options, Browser, Logger} from "./config";
 import TunnelConf from "./tunnel";
 import {WebDriverBuilder} from "./driver";
 import {BrowserResults, SuiteResult} from "./results";
@@ -25,13 +25,15 @@ export function urls (
             opts.browsers.map(data => new Browser(data)),
             (browser: Browser) => {
 
+                var testOpts = opts.getTestOpts(browser);
+
                 // Instantiate the web driver
                 return driverBuilder(tunnel, browser).run(driver => {
 
                     // Run through the list of URLs
                     return queue.execute<string, SuiteResult>(
-                        opts.urls,
-                        loader.select(opts.mode)(driver, opts)
+                        testOpts.urls,
+                        loader.select(testOpts.mode)(driver, testOpts)
 
                     ).then<SuiteResult>(results => {
                         // Combine results from all URLs
