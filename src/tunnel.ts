@@ -7,6 +7,11 @@ import Q = require("q");
 import cleankill = require("cleankill");
 import {Options, Credentials, Logger} from "./config";
 
+/** A connected tunnel */
+export class TunnelConnection {
+    constructor( public identifier: string ) {}
+}
+
 /** Configures a tunnel, and calls a function with that tunnel */
 export default class TunnelConf {
     constructor(
@@ -20,7 +25,7 @@ export default class TunnelConf {
      * down when the returned promise completes.
      */
     run<T>(
-        fn: (tunnel: SauceLabs.Tunnel) => Q.Promise<T>
+        fn: (tunnel: TunnelConnection) => Q.Promise<T>
     ): Q.Promise<T> {
 
         this.log.writeln("=> Starting Tunnel to Sauce Labs".inverse);
@@ -83,7 +88,10 @@ export default class TunnelConf {
                 this.options.tunnelTimeout,
                 `Timed out creating tunnel: ${this.options.tunnelTimeout}ms`
             )
-            .then(() => fn(tunnel).finally(stopTunnel));
+            .then(() => {
+                return fn(new TunnelConnection(tunnel.identifier))
+                    .finally(stopTunnel);
+            });
     }
 }
 

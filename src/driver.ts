@@ -1,14 +1,14 @@
 /// <reference path="../typings/q/Q.d.ts" />
-/// <reference path="./SauceLabs.d.ts" />
 /// <reference path="./wd.d.ts" />
 
 import {Options, Credentials, Browser, Logger} from "./config";
+import {TunnelConnection} from "./tunnel";
 import wd = require("wd");
 import Q = require("q");
 
 /** A function for building a web driver setup object */
 export type WebDriverBuilder = (
-    tunnel: SauceLabs.Tunnel,
+    tunnel: TunnelConnection,
     browser: Browser
 ) => WebDriverSetup;
 
@@ -19,7 +19,7 @@ export function build(
     log: Logger
 ): WebDriverBuilder {
     return function (
-        tunnel: SauceLabs.Tunnel,
+        tunnel: TunnelConnection,
         browser: Browser
     ) {
         return new WebDriverSetup(options, tunnel, browser, credentials, log);
@@ -30,7 +30,7 @@ export function build(
 export class WebDriverSetup {
     constructor (
         private options: Options,
-        private tunnel: SauceLabs.Tunnel,
+        private tunnel: TunnelConnection,
         private browser: Browser,
         private credentials: Credentials,
         private log: Logger
