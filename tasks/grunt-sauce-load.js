@@ -432,9 +432,14 @@ define("tunnel", ["require", "exports", "q", "cleankill"], function (require, ex
             return defer.promise.timeout(this.options.tunnelTimeout, "Timed out creating tunnel: " + this.options.tunnelTimeout + "ms");
         };
         TunnelConf.prototype.run = function (fn) {
-            var connection = this.options["tunnel-identifier"] ?
-                Q(new TunnelConnection(this.options["tunnel-identifier"])) :
-                this.newTunnel();
+            var connection;
+            if (this.options["tunnel-identifier"]) {
+                this.log.ok("Using existing tunnel: " + this.options["tunnel-identifier"]);
+                connection = Q(new TunnelConnection(this.options["tunnel-identifier"]));
+            }
+            else {
+                connection = this.newTunnel();
+            }
             return connection.then(function (connection) {
                 return fn(connection).finally(connection.stopTunnel);
             });
