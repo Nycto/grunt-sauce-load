@@ -122,6 +122,12 @@ export class Options {
     /** The timeout for connecting and disconnecting the tunnel */
     tunnelTimeout: number = 90000;
 
+    /**
+     * The tunnel ID for an existing tunnel instance
+     * @see https://docs.travis-ci.com/user/sauce-connect/
+     */
+    "tunnel-identifier": string = process.env.TRAVIS_JOB_NUMBER;
+
     /** Allows for a mock tunnel to be created */
     mockTunnel: boolean = false;
 

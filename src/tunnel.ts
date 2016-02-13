@@ -9,7 +9,10 @@ import {Options, Credentials, Logger} from "./config";
 
 /** A connected tunnel */
 export class TunnelConnection {
-    constructor( public identifier: string ) {}
+    constructor(
+        public identifier: string,
+        public stopTunnel: () => Q.Promise<void> = () => Q<void>(null)
+    ) {}
 }
 
 /** Configures a tunnel, and calls a function with that tunnel */
@@ -20,13 +23,8 @@ export default class TunnelConf {
         private log: Logger
     ) {}
 
-    /**
-     * Executes a function with a tunnel. The tunnel is automatically shut
-     * down when the returned promise completes.
-     */
-    run<T>(
-        fn: (tunnel: TunnelConnection) => Q.Promise<T>
-    ): Q.Promise<T> {
+    /** Starts a new tunnel off to saucelabs */
+    private newTunnel(): Q.Promise<TunnelConnection> {
 
         this.log.writeln("=> Starting Tunnel to Sauce Labs".inverse);
 
@@ -38,17 +36,7 @@ export default class TunnelConf {
             ["-P", "0"]
         );
 
-        var defer = Q.defer<void>();
-
-        tunnel.start((status: boolean) => {
-            if (status === false) {
-                defer.reject(new Error("Unable to open tunnel"));
-            }
-            else {
-                this.log.ok("Connected to Tunnel");
-                defer.resolve();
-            }
-        });
+        var defer = Q.defer<TunnelConnection>();
 
         // Will store a future that is fulfilled when the tunnel is stopped
         var stopped: Q.Promise<void>;
@@ -83,15 +71,39 @@ export default class TunnelConf {
             stopTunnel().finally(done);
         });
 
-        return defer.promise
-            .timeout(
-                this.options.tunnelTimeout,
-                `Timed out creating tunnel: ${this.options.tunnelTimeout}ms`
-            )
-            .then(() => {
-                return fn(new TunnelConnection(tunnel.identifier))
-                    .finally(stopTunnel);
-            });
+        tunnel.start((status: boolean) => {
+            if (status === false) {
+                defer.reject(new Error("Unable to open tunnel"));
+            }
+            else {
+                this.log.ok("Connected to Tunnel");
+                defer.resolve(
+                    new TunnelConnection(tunnel.identifier, stopTunnel));
+            }
+        });
+
+        return defer.promise.timeout(
+            this.options.tunnelTimeout,
+            `Timed out creating tunnel: ${this.options.tunnelTimeout}ms`
+        );
+    }
+
+    /**
+     * Executes a function with a tunnel. The tunnel is automatically shut
+     * down when the returned promise completes.
+     */
+    run<T>(
+        fn: (tunnel: TunnelConnection) => Q.Promise<T>
+    ): Q.Promise<T> {
+
+        var connection =
+            this.options["tunnel-identifier"] ?
+            Q( new TunnelConnection(this.options["tunnel-identifier"]) ) :
+            this.newTunnel();
+
+        return connection.then((connection) => {
+            return fn(connection).finally(connection.stopTunnel);
+        });
     }
 }
 
