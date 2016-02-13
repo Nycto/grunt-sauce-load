@@ -324,6 +324,7 @@ define("config", ["require", "exports"], function (require, exports) {
             this.browsers = [];
             this.throttled = 5;
             this.tunnelTimeout = 90000;
+            this["tunnel-identifier"] = process.env.TRAVIS_JOB_NUMBER;
             this.mockTunnel = false;
             this.seleniumHost = "ondemand.saucelabs.com";
             this.seleniumPort = 80;
@@ -379,26 +380,26 @@ define("config", ["require", "exports"], function (require, exports) {
 define("tunnel", ["require", "exports", "q", "cleankill"], function (require, exports, Q, cleankill) {
     "use strict";
     var SauceTunnel = require("sauce-tunnel");
+    var TunnelConnection = (function () {
+        function TunnelConnection(identifier, stopTunnel) {
+            if (stopTunnel === void 0) { stopTunnel = function () { return Q(null); }; }
+            this.identifier = identifier;
+            this.stopTunnel = stopTunnel;
+        }
+        return TunnelConnection;
+    }());
+    exports.TunnelConnection = TunnelConnection;
     var TunnelConf = (function () {
         function TunnelConf(options, credentials, log) {
             this.options = options;
             this.credentials = credentials;
             this.log = log;
         }
-        TunnelConf.prototype.run = function (fn) {
+        TunnelConf.prototype.newTunnel = function () {
             var _this = this;
             this.log.writeln("=> Starting Tunnel to Sauce Labs".inverse);
             var tunnel = new SauceTunnel(this.credentials.user, this.credentials.key, Math.floor((new Date()).getTime() / 1000 - 1230768000).toString(), !this.options.mockTunnel, ["-P", "0"]);
             var defer = Q.defer();
-            tunnel.start(function (status) {
-                if (status === false) {
-                    defer.reject(new Error("Unable to open tunnel"));
-                }
-                else {
-                    _this.log.ok("Connected to Tunnel");
-                    defer.resolve();
-                }
-            });
             var stopped;
             var stopTunnel = function () {
                 if (!stopped) {
@@ -419,9 +420,24 @@ define("tunnel", ["require", "exports", "q", "cleankill"], function (require, ex
             cleankill.onInterrupt(function (done) {
                 stopTunnel().finally(done);
             });
-            return defer.promise
-                .timeout(this.options.tunnelTimeout, "Timed out creating tunnel: " + this.options.tunnelTimeout + "ms")
-                .then(function () { return fn(tunnel).finally(stopTunnel); });
+            tunnel.start(function (status) {
+                if (status === false) {
+                    defer.reject(new Error("Unable to open tunnel"));
+                }
+                else {
+                    _this.log.ok("Connected to Tunnel");
+                    defer.resolve(new TunnelConnection(tunnel.identifier, stopTunnel));
+                }
+            });
+            return defer.promise.timeout(this.options.tunnelTimeout, "Timed out creating tunnel: " + this.options.tunnelTimeout + "ms");
+        };
+        TunnelConf.prototype.run = function (fn) {
+            var connection = this.options["tunnel-identifier"] ?
+                Q(new TunnelConnection(this.options["tunnel-identifier"])) :
+                this.newTunnel();
+            return connection.then(function (connection) {
+                return fn(connection).finally(connection.stopTunnel);
+            });
         };
         return TunnelConf;
     }());
