@@ -96,10 +96,17 @@ export default class TunnelConf {
         fn: (tunnel: TunnelConnection) => Q.Promise<T>
     ): Q.Promise<T> {
 
-        var connection =
-            this.options["tunnel-identifier"] ?
-            Q( new TunnelConnection(this.options["tunnel-identifier"]) ) :
-            this.newTunnel();
+        var connection: Q.Promise<TunnelConnection>;
+
+        if ( this.options["tunnel-identifier"] ) {
+            this.log.ok(
+                "Using existing tunnel: " + this.options["tunnel-identifier"]);
+            connection = Q(
+                new TunnelConnection(this.options["tunnel-identifier"]) );
+        }
+        else {
+            connection = this.newTunnel();
+        }
 
         return connection.then((connection) => {
             return fn(connection).finally(connection.stopTunnel);
